@@ -1,18 +1,24 @@
 package aiden.clip.core;
 
-import javax.swing.*;
-import aiden.clip.audio.SoundHandler;
-import aiden.clip.input.Mouse;
-import aiden.clip.ui.HUD;
-import aiden.clip.ui.Menu;
-import aiden.clip.ui.Window;
-import aiden.clip.util.BufferedImageLoader;
-
-import java.awt.*;
+import java.awt.Canvas;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Image;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.io.Serial;
 import java.util.Objects;
+
+import javax.swing.ImageIcon;
+
+import aiden.clip.audio.SoundHandler;
+import aiden.clip.input.InputHandler;
+import aiden.clip.ui.GameUI;
+import aiden.clip.ui.Menu;
+import aiden.clip.ui.Window;
+import aiden.clip.util.BufferedImageLoader;
 
 public class Game extends Canvas implements Runnable {
 
@@ -25,8 +31,9 @@ public class Game extends Canvas implements Runnable {
 
     private final BufferedImageLoader loader;
     private final Handler handler;
-    private final HUD hud;
+    private GameUI gameUI;
     private final GameManager gameManager;
+    private InputHandler inputHandler;
     private final double autoSaveInterval;
     private BufferedImage levelImage = null;
     private final BufferedImage dog;
@@ -75,18 +82,19 @@ public class Game extends Canvas implements Runnable {
 
         // --- Handler ---
         handler = new Handler();
-        
+
         // --- GameManager ---
         gameManager = new GameManager(handler, config, windowScaleX, windowScaleY);
 
-        // --- HUD ---
-        hud = new HUD(gameManager, config, windowScaleX, windowScaleY); // HUD constructor must accept scaleX/scaleY
+        // --- GameUI ---
+        gameUI = new GameUI(gameManager, config, windowScaleX, windowScaleY);
+        gameManager.setGameUI(gameUI);
 
-        // --- Mouse ---
-        Mouse mouse = new Mouse(0, 0, ID.MOUSE, handler, this, hud, config);
-        handler.addObject(mouse);
-        this.addMouseListener(mouse);
-        this.addMouseMotionListener(mouse);
+        // --- Input ---
+        // Replace legacy Mouse with InputHandler
+        this.inputHandler = new InputHandler(this, handler, config);
+        this.addMouseListener(inputHandler);
+        this.addMouseMotionListener(inputHandler);
 
         // --- Window ---
         new Window(this, config);
@@ -96,22 +104,6 @@ public class Game extends Canvas implements Runnable {
 
         // --- Load dog image ---
         dog = loader.loadImage("/images/dog.png");
-
-        // --- Menu buttons ---
-        Menu newGameBtn = new Menu(0.07f, 0.15f, 0.07f, 0.01f, ID.NEW_GAME, config);
-        Menu continueBtn = new Menu(0.07f, 0.15f, 0.07f, 0.01f, ID.CONTINUE, config);
-        Menu exitBtn = new Menu(0.07f, 0.15f, 0.07f, 0.01f, ID.EXIT, config);
-
-        newGameBtn.updatePosition((int) (config.displayWidth * windowScaleX),
-                (int) (config.displayHeight * windowScaleY), 2);
-        continueBtn.updatePosition((int) (config.displayWidth * windowScaleX),
-                (int) (config.displayHeight * windowScaleY), 1);
-        exitBtn.updatePosition((int) (config.displayWidth * windowScaleX),
-                (int) (config.displayHeight * windowScaleY), 0);
-
-        handler.addObject(newGameBtn);
-        handler.addObject(continueBtn);
-        handler.addObject(exitBtn);
 
         // --- Auto-save interval ---
         autoSaveInterval = config.autoSaveIntervalSeconds;
@@ -245,7 +237,9 @@ public class Game extends Canvas implements Runnable {
 
         if (gameState == GameState.GAME) {
             gameManager.tick();
-            hud.tick();
+            // Handle continuous input (hover/drag) on the game thread
+            gameManager.checkCollisions(inputHandler.getMouseX(), inputHandler.getMouseY());
+            gameManager.handleUiHover(inputHandler.getMouseX(), inputHandler.getMouseY());
         }
     }
 
@@ -262,7 +256,10 @@ public class Game extends Canvas implements Runnable {
         if (gameState == GameState.MENU) {
             g.drawImage(dog, (int) (960 * windowScaleX), (int) (20 * windowScaleY), null);
         } else {
-            hud.render(g);
+            gameManager.render(g);
+            if (gameUI != null) {
+                gameUI.render(g);
+            }
         }
 
         handler.render(g);

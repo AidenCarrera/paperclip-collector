@@ -15,9 +15,10 @@ public abstract class GameObject {
 
     /**
      * Base constructor for all game objects.
-     * @param x initial x position
-     * @param y initial y position
-     * @param id object ID
+     * 
+     * @param x      initial x position
+     * @param y      initial y position
+     * @param id     object ID
      * @param config reference to global ConfigManager
      */
     public GameObject(int x, int y, ID id, ConfigManager config) {
@@ -29,7 +30,9 @@ public abstract class GameObject {
 
     // Abstract methods for each subclass to implement
     public abstract void tick();
+
     public abstract void render(Graphics g);
+
     public abstract Rectangle getBounds();
 
     // Common utility methods
@@ -44,5 +47,13 @@ public abstract class GameObject {
 
     public Point getMousePosition() {
         return new Point(mouseX, mouseY);
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
     }
 }

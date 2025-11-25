@@ -1,42 +1,38 @@
 package aiden.clip.core;
 
-import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import aiden.clip.entities.Paperclip;
-import aiden.clip.entities.Spawner;
-import aiden.clip.entities.Upgrade;
 import aiden.clip.save.SaveManager;
 import aiden.clip.ui.Menu;
+import aiden.clip.ui.GameUI;
 
 public class GameManager {
 
     private final Handler handler;
     private final SaveManager saveManager;
-    private final Spawner spawner;
-    private final Random random;
     private final ConfigManager config;
+    private final Random random;
 
-    // Window scaling factors (runtime only)
+    // Sub-managers
+    private final SpawnManager spawnManager;
+    private final UpgradeManager upgradeManager;
+
+    // Window scaling factors
     private final float windowScaleX;
     private final float windowScaleY;
 
     // Game state
     private int clips;
-    private int currentClipCount;
-    private int maxClipCount;
-
-    private ColorTier coloredUpgrade;
-    private int valueUpgradeCount;
-    private int moreUpgradeCount;
-
-    // GameState
     private GameState state;
-
-    // Menu buttons
     private List<Menu> menuButtons;
+
+    // Particle System
+    private final ParticleSystem particleSystem;
+
+    // Game UI
+    private GameUI gameUI;
 
     public GameManager(Handler handler, ConfigManager config, float windowScaleX, float windowScaleY) {
         this.handler = handler;
@@ -45,18 +41,29 @@ public class GameManager {
         this.windowScaleY = windowScaleY;
         this.saveManager = new SaveManager();
         this.random = new Random();
-        this.spawner = new Spawner(handler, random, config);
+
+        this.spawnManager = new SpawnManager(handler, config, random);
+        this.upgradeManager = new UpgradeManager(config);
+        this.particleSystem = new ParticleSystem(config);
 
         this.state = GameState.MENU;
         this.menuButtons = new ArrayList<>();
 
-        showMenuButtons(); // initially show menu
+        showMenuButtons();
+    }
+
+    public ParticleSystem getParticleSystem() {
+        return particleSystem;
+    }
+
+    public void setGameUI(GameUI gameUI) {
+        this.gameUI = gameUI;
     }
 
     // --- Menu management ---
     public void showMenuButtons() {
         if (!menuButtons.isEmpty())
-            return; // prevent duplicates
+            return;
 
         int width = config.displayWidth;
         int height = config.displayHeight;
@@ -87,21 +94,11 @@ public class GameManager {
     public void startNewGame() {
         System.out.println("Game Restarted");
         state = GameState.GAME;
-
         hideMenuButtons();
 
         clips = config.startClips;
-        currentClipCount = 0;
-        maxClipCount = config.maxClipCount;
-
-        coloredUpgrade = ColorTier.NONE;
-        valueUpgradeCount = 0;
-        moreUpgradeCount = 0;
-
-        // Add initial upgrade objects
-        handler.addObject(new Upgrade(175, 50, ColorTier.RED.getUpgradeID(), config));
-        handler.addObject(new Upgrade(175, 145, ID.VALUE_UPGRADE, config));
-        handler.addObject(new Upgrade(65, 145, ID.MORE_UPGRADE, config));
+        spawnManager.reset(config.startClips, config.maxClipCount);
+        upgradeManager.reset();
     }
 
     public void continueGame() {
@@ -116,8 +113,7 @@ public class GameManager {
     }
 
     public void saveGame() {
-        if (coloredUpgrade == null) {
-            System.out.println("No game state to save yet.");
+        if (upgradeManager.getColoredUpgrade() == null) { // Check if initialized
             return;
         }
         saveManager.save(this);
@@ -125,144 +121,159 @@ public class GameManager {
 
     // --- Gameplay actions ---
     public void collectClip(GameObject clip) {
-        int baseValue = switch (clip.getID()) {
-            case PAPERCLIP -> config.paperclipBaseValue;
-            case RED_PAPERCLIP -> config.paperclipBaseValue * 5;
-            case GREEN_PAPERCLIP -> config.paperclipBaseValue * 25;
-            case BLUE_PAPERCLIP -> config.paperclipBaseValue * 100;
-            case PURPLE_PAPERCLIP -> config.paperclipBaseValue * 1000;
-            case YELLOW_PAPERCLIP -> config.paperclipBaseValue * 10000;
-            default -> 0;
-        };
+        int baseValue = 0;
+        java.awt.Color particleColor = java.awt.Color.GRAY;
 
-        clips += baseValue * (valueUpgradeCount + 1);
-        currentClipCount--;
-        handler.removeObject(clip);
+        switch (clip.getID()) {
+            case PAPERCLIP -> {
+                baseValue = config.paperclipBaseValue;
+                particleColor = java.awt.Color.GRAY;
+            }
+            case RED_PAPERCLIP -> {
+                baseValue = config.paperclipBaseValue * 5;
+                particleColor = java.awt.Color.RED;
+            }
+            case GREEN_PAPERCLIP -> {
+                baseValue = config.paperclipBaseValue * 25;
+                particleColor = java.awt.Color.GREEN;
+            }
+            case BLUE_PAPERCLIP -> {
+                baseValue = config.paperclipBaseValue * 100;
+                particleColor = java.awt.Color.BLUE;
+            }
+            case PURPLE_PAPERCLIP -> {
+                baseValue = config.paperclipBaseValue * 1000;
+                particleColor = new java.awt.Color(128, 0, 128);
+            }
+            case YELLOW_PAPERCLIP -> {
+                baseValue = config.paperclipBaseValue * 10000;
+                particleColor = java.awt.Color.YELLOW;
+            }
+            default -> {
+            }
+        }
+
+        if (baseValue > 0) {
+            clips += baseValue * (upgradeManager.getValueUpgradeCount() + 1);
+            spawnManager.decreaseClipCount();
+            handler.removeObject(clip);
+
+            // Spawn particles
+            particleSystem.spawnExplosion(clip.getX() + 16, clip.getY() + 16, particleColor, 10);
+        }
     }
 
-    // --- Upgrade prices ---
-    public int getColoredUpgradePrice(ColorTier tier) {
-        return switch (tier) {
-            case RED -> config.redUpgradeCost;
-            case GREEN -> config.greenUpgradeCost;
-            case BLUE -> config.blueUpgradeCost;
-            case PURPLE -> config.purpleUpgradeCost;
-            case YELLOW -> config.yellowUpgradeCost;
-            default -> 0;
-        };
-    }
+    public void checkCollisions(int x, int y) {
+        // Check for paperclip collisions (hover/drag)
+        for (int i = 0; i < handler.getObjects().size(); i++) {
+            GameObject obj = handler.getObjects().get(i);
+            if (obj.getID() == null)
+                continue;
 
-    public int getValueUpgradePrice() {
-        return (int) (config.valueUpgradeBaseCost * Math.pow(config.upgradeCostMultiplier, valueUpgradeCount));
-    }
-
-    public int getMoreUpgradePrice() {
-        return (int) (config.moreUpgradeBaseCost * Math.pow(config.upgradeCostMultiplier, moreUpgradeCount));
-    }
-
-    // --- Upgrade methods ---
-    public void buyColoredUpgradeFromHUD() {
-        ColorTier nextTier = coloredUpgrade.next();
-        if (nextTier != null) {
-            int price = getColoredUpgradePrice(nextTier);
-            if (clips >= price) {
-                clips -= price;
-                coloredUpgrade = nextTier;
-                System.out.println("Bought " + nextTier + " upgrade for " + price + " clips");
-            } else {
-                System.out.println("Not enough clips for " + nextTier + ". Price: " + price);
+            // Simple bounding box check
+            if (obj.getBounds().contains(x, y)) {
+                switch (obj.getID()) {
+                    case PAPERCLIP, RED_PAPERCLIP, GREEN_PAPERCLIP, BLUE_PAPERCLIP, PURPLE_PAPERCLIP,
+                            YELLOW_PAPERCLIP -> {
+                        collectClip(obj);
+                        return; // Collected a clip, stop checking (one per tick/event)
+                    }
+                    default -> {
+                    }
+                }
             }
         }
     }
 
-    public void buyValueUpgradeFromHUD() {
-        int price = getValueUpgradePrice();
-        if (clips >= price) {
-            clips -= price;
-            valueUpgradeCount++;
-            System.out.println("Bought value upgrade. New count: " + valueUpgradeCount);
-        } else {
-            System.out.println("Not enough clips for value upgrade.");
+    public void handleUiClick(int x, int y) {
+        // Check UI clicks
+        if (gameUI != null) {
+            java.awt.event.MouseEvent e = new java.awt.event.MouseEvent(
+                    new java.awt.Component() {
+                    }, 0, 0, 0, x, y, 1, false);
+            gameUI.getUIManager().onMouseMove(e); // Update hover state
+            gameUI.getUIManager().onMouseRelease(e); // Trigger click
         }
     }
 
-    public void buyMoreUpgradeFromHUD() {
-        int price = getMoreUpgradePrice();
-        if (clips >= price) {
-            clips -= price;
-            maxClipCount++;
-            moreUpgradeCount++;
-            System.out.println("Bought more upgrade. Max clips: " + maxClipCount);
-        } else {
-            System.out.println("Not enough clips for more upgrade.");
+    public void handleUiHover(int x, int y) {
+        if (gameUI != null) {
+            java.awt.event.MouseEvent e = new java.awt.event.MouseEvent(
+                    new java.awt.Component() {
+                    }, 0, 0, 0, x, y, 0, false);
+            gameUI.getUIManager().onMouseMove(e);
         }
     }
 
-    // --- Game ticking / spawning ---
+    public void handleInput(int x, int y) {
+        handleUiClick(x, y);
+    }
+
+    // --- Upgrade prices (Delegates) ---
+    public int getColoredUpgradePrice(ColorTier tier) {
+        return upgradeManager.getColoredUpgradePrice(tier);
+    }
+
+    public int getValueUpgradePrice() {
+        return upgradeManager.getValueUpgradePrice();
+    }
+
+    public int getMoreUpgradePrice() {
+        return upgradeManager.getMoreUpgradePrice();
+    }
+
+    // --- Upgrade wrappers for HUD ---
+    public void buyColoredUpgrade() {
+        int cost = upgradeManager.tryBuyColoredUpgrade(clips);
+        if (cost > 0) {
+            clips -= cost;
+            System.out.println("Bought colored upgrade.");
+        }
+    }
+
+    public void buyValueUpgrade() {
+        int cost = upgradeManager.tryBuyValueUpgrade(clips);
+        if (cost > 0) {
+            clips -= cost;
+            System.out.println("Bought value upgrade.");
+        }
+    }
+
+    public void buyMoreUpgrade() {
+        int cost = upgradeManager.tryBuyMoreUpgrade(clips);
+        if (cost > 0) {
+            clips -= cost;
+            spawnManager.increaseMaxClipCount();
+            System.out.println("Bought more upgrade.");
+        }
+    }
+
+    // --- Game ticking ---
     public void tick() {
         if (state != GameState.GAME)
             return;
 
-        // --- Compute HUD offset (scale applied) ---
-        int hudWidth = (int) (400 * windowScaleX); // horizontal HUD margin
-        int hudHeight = (int) (400 * windowScaleY); // optional vertical HUD margin
+        // Pass necessary data to SpawnManager
+        // HUD dimensions for spawn margins
+        int hudWidth = (int) (400 * windowScaleX);
+        int hudHeight = (int) (400 * windowScaleY);
 
-        // --- Determine max spawn bounds based on display and window scale ---
-        int maxX = (int) (config.displayWidth * windowScaleX);
-        int maxY = (int) (config.displayHeight * windowScaleY);
+        spawnManager.tick(windowScaleX, windowScaleY, upgradeManager.getColoredUpgrade(), hudWidth, hudHeight);
+        particleSystem.tick();
 
-        // --- Compute paperclip size dynamically using Paperclip helper ---
-        Dimension clipSize = Paperclip.getScaledSize(config, windowScaleX, windowScaleY);
-        int paperclipWidth = clipSize.width;
-        int paperclipHeight = clipSize.height;
-
-        // --- Spawn bounds with margins ---
-        int spawnMinX = hudWidth;
-        int spawnMinY = 0; // or hudHeight if vertical HUD
-        int spawnMaxX = Math.max(spawnMinX + 1, maxX - paperclipWidth);
-        int spawnMaxY = Math.max(spawnMinY + 1, maxY - paperclipHeight);
-
-        // --- Spawn paperclips while under max count ---
-        while (currentClipCount < maxClipCount) {
-            // --- Determine spawn type using weighted random ---
-            double P = 69;
-            double redP = config.redSpawnWeight;
-            double greenP = config.greenSpawnWeight;
-            double blueP = config.blueSpawnWeight;
-            double purpleP = config.purpleSpawnWeight;
-            double yellowP = config.yellowSpawnWeight;
-
-            double totalWeight = P + redP + greenP + blueP + purpleP + yellowP;
-            double roll = random.nextDouble() * totalWeight;
-
-            ID spawnType;
-            if (roll < yellowP && coloredUpgrade.ordinal() >= ColorTier.YELLOW.ordinal())
-                spawnType = ID.YELLOW_PAPERCLIP;
-            else if (roll < yellowP + purpleP && coloredUpgrade.ordinal() >= ColorTier.PURPLE.ordinal())
-                spawnType = ID.PURPLE_PAPERCLIP;
-            else if (roll < yellowP + purpleP + blueP && coloredUpgrade.ordinal() >= ColorTier.BLUE.ordinal())
-                spawnType = ID.BLUE_PAPERCLIP;
-            else if (roll < yellowP + purpleP + blueP + greenP && coloredUpgrade.ordinal() >= ColorTier.GREEN.ordinal())
-                spawnType = ID.GREEN_PAPERCLIP;
-            else if (roll < yellowP + purpleP + blueP + greenP + redP
-                    && coloredUpgrade.ordinal() >= ColorTier.RED.ordinal())
-                spawnType = ID.RED_PAPERCLIP;
-            else
-                spawnType = ID.PAPERCLIP;
-
-            // --- Random position within safe bounds ---
-            int spawnX = spawnMinX + random.nextInt(Math.max(1, spawnMaxX - spawnMinX));
-            int spawnY = spawnMinY + random.nextInt(Math.max(1, spawnMaxY - spawnMinY));
-
-            // --- Spawn the paperclip ---
-            spawner.spawnClip(spawnType, spawnX, spawnY, windowScaleX, windowScaleY);
-
-            currentClipCount++;
+        if (gameUI != null) {
+            gameUI.tick();
         }
     }
 
+    public void render(java.awt.Graphics g) {
+        if (state != GameState.GAME)
+            return;
 
-    // --- Getters / setters for saving ---
+        particleSystem.render(g);
+    }
+
+    // --- Getters / Setters for SaveManager and HUD ---
     public int getClips() {
         return clips;
     }
@@ -271,44 +282,53 @@ public class GameManager {
         this.clips = clips;
     }
 
+    public SpawnManager getSpawnManager() {
+        return spawnManager;
+    }
+
+    public UpgradeManager getUpgradeManager() {
+        return upgradeManager;
+    }
+
+    // Delegate getters for compatibility with existing HUD/SaveManager
     public int getCurrentClipCount() {
-        return currentClipCount;
+        return spawnManager.getCurrentClipCount();
     }
 
     public void setCurrentClipCount(int count) {
-        this.currentClipCount = count;
+        spawnManager.setCurrentClipCount(count);
     }
 
     public int getMaxClipCount() {
-        return maxClipCount;
+        return spawnManager.getMaxClipCount();
     }
 
-    public void setMaxClipCount(int maxClipCount) {
-        this.maxClipCount = maxClipCount;
+    public void setMaxClipCount(int count) {
+        spawnManager.setMaxClipCount(count);
     }
 
     public ColorTier getColoredUpgrade() {
-        return coloredUpgrade;
+        return upgradeManager.getColoredUpgrade();
     }
 
-    public void setColoredUpgrade(ColorTier coloredUpgrade) {
-        this.coloredUpgrade = coloredUpgrade;
+    public void setColoredUpgrade(ColorTier tier) {
+        upgradeManager.setColoredUpgrade(tier);
     }
 
     public int getValueUpgradeCount() {
-        return valueUpgradeCount;
+        return upgradeManager.getValueUpgradeCount();
     }
 
     public void setValueUpgradeCount(int count) {
-        this.valueUpgradeCount = count;
+        upgradeManager.setValueUpgradeCount(count);
     }
 
     public int getMoreUpgradeCount() {
-        return moreUpgradeCount;
+        return upgradeManager.getMoreUpgradeCount();
     }
 
     public void setMoreUpgradeCount(int count) {
-        this.moreUpgradeCount = count;
+        upgradeManager.setMoreUpgradeCount(count);
     }
 
     public Handler getHandler() {

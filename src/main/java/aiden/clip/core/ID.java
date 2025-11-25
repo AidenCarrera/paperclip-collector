@@ -24,5 +24,8 @@ public enum ID {
     PURPLE_UPGRADE,
     YELLOW_UPGRADE,
     VALUE_UPGRADE,
-    MORE_UPGRADE
+    MORE_UPGRADE,
+
+    // Visuals
+    PARTICLE
 }

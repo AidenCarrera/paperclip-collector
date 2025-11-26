@@ -60,27 +60,27 @@ public class SpawnManager {
         double totalWeight = P + redP + greenP + blueP + purpleP + yellowP;
         double roll = random.nextDouble() * totalWeight;
 
-        ID spawnType;
+        ColorTier spawnTier;
         if (roll < yellowP && coloredUpgrade.ordinal() >= ColorTier.YELLOW.ordinal())
-            spawnType = ID.YELLOW_PAPERCLIP;
+            spawnTier = ColorTier.YELLOW;
         else if (roll < yellowP + purpleP && coloredUpgrade.ordinal() >= ColorTier.PURPLE.ordinal())
-            spawnType = ID.PURPLE_PAPERCLIP;
+            spawnTier = ColorTier.PURPLE;
         else if (roll < yellowP + purpleP + blueP && coloredUpgrade.ordinal() >= ColorTier.BLUE.ordinal())
-            spawnType = ID.BLUE_PAPERCLIP;
+            spawnTier = ColorTier.BLUE;
         else if (roll < yellowP + purpleP + blueP + greenP && coloredUpgrade.ordinal() >= ColorTier.GREEN.ordinal())
-            spawnType = ID.GREEN_PAPERCLIP;
+            spawnTier = ColorTier.GREEN;
         else if (roll < yellowP + purpleP + blueP + greenP + redP
                 && coloredUpgrade.ordinal() >= ColorTier.RED.ordinal())
-            spawnType = ID.RED_PAPERCLIP;
+            spawnTier = ColorTier.RED;
         else
-            spawnType = ID.PAPERCLIP;
+            spawnTier = ColorTier.BASIC;
 
         // --- Random position within safe bounds ---
         int spawnX = minX + random.nextInt(Math.max(1, maxX - minX));
         int spawnY = minY + random.nextInt(Math.max(1, maxY - minY));
 
         // --- Spawn the paperclip ---
-        spawner.spawnClip(spawnType, spawnX, spawnY, scaleX, scaleY);
+        spawner.spawnClip(spawnTier, spawnX, spawnY, scaleX, scaleY);
     }
 
     public void decreaseClipCount() {

@@ -148,14 +148,9 @@ public class GameManager {
             // Check if line segment intersects object bounds OR if cursor rectangle
             // intersects
             if (obj.getBounds().intersectsLine(x1, y1, x2, y2) || obj.getBounds().intersects(cursorBounds)) {
-                switch (obj.getID()) {
-                    case PAPERCLIP, RED_PAPERCLIP, GREEN_PAPERCLIP, BLUE_PAPERCLIP, PURPLE_PAPERCLIP,
-                            YELLOW_PAPERCLIP -> {
-                        collectClip(obj);
-                        return; // Collected a clip, stop checking (one per tick/event)
-                    }
-                    default -> {
-                    }
+                if (obj.getID() == ID.PAPERCLIP) {
+                    collectClip(obj);
+                    return; // Collected a clip, stop checking (one per tick/event)
                 }
             }
         }

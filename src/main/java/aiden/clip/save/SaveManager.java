@@ -80,11 +80,11 @@ public class SaveManager {
                 if (data.coloredUpgrade != null && !data.coloredUpgrade.isBlank()) {
                     gameManager.setColoredUpgrade(ColorTier.valueOf(data.coloredUpgrade));
                 } else {
-                    gameManager.setColoredUpgrade(ColorTier.NONE);
+                    gameManager.setColoredUpgrade(ColorTier.BASIC);
                 }
             } catch (IllegalArgumentException e) {
                 System.err.println("Invalid coloredUpgrade in save file: " + data.coloredUpgrade);
-                gameManager.setColoredUpgrade(ColorTier.NONE);
+                gameManager.setColoredUpgrade(ColorTier.BASIC);
             }
 
             gameManager.setValueUpgradeCount(data.valueUpgradeCount);
@@ -97,7 +97,7 @@ public class SaveManager {
         } catch (IOException e) {
             System.err.println("Failed to load save file. Starting new game.");
             e.printStackTrace();
-            gameManager.setColoredUpgrade(ColorTier.NONE);
+            gameManager.setColoredUpgrade(ColorTier.BASIC);
             return false;
         }
     }

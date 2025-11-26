@@ -14,7 +14,7 @@ public class UpgradeManager {
     }
 
     public void reset() {
-        coloredUpgrade = ColorTier.NONE;
+        coloredUpgrade = ColorTier.BASIC;
         valueUpgradeCount = 0;
         moreUpgradeCount = 0;
     }

@@ -1,6 +1,7 @@
 package aiden.clip.entities;
 
 import javax.swing.*;
+import aiden.clip.core.ColorTier;
 import aiden.clip.core.ConfigManager;
 import aiden.clip.core.GameObject;
 import aiden.clip.core.ID;
@@ -35,10 +36,21 @@ public class Paperclip extends GameObject {
      * @param scaleX Horizontal scale factor
      * @param scaleY Vertical scale factor
      */
-    public Paperclip(int x, int y, ID id, ConfigManager config, double scaleX, double scaleY) {
-        super(x, y, id, config);
+    private final ColorTier tier;
 
-        Image img = getImageForID();
+    /**
+     * @param x      X position
+     * @param y      Y position
+     * @param tier   Paperclip tier (color)
+     * @param config Config manager
+     * @param scaleX Horizontal scale factor
+     * @param scaleY Vertical scale factor
+     */
+    public Paperclip(int x, int y, ColorTier tier, ConfigManager config, double scaleX, double scaleY) {
+        super(x, y, ID.PAPERCLIP, config);
+        this.tier = tier;
+
+        Image img = getImageForTier(tier);
 
         // Apply resolution scaling + optional clip size multiplier
         double finalScaleX = scaleX * config.clipSize;
@@ -47,29 +59,29 @@ public class Paperclip extends GameObject {
         width = (int) (img.getWidth(null) * finalScaleX);
         height = (int) (img.getHeight(null) * finalScaleY);
 
-        // Initialize properties based on ID
-        switch (id) {
-            case PAPERCLIP -> {
+        // Initialize properties based on Tier
+        switch (tier) {
+            case BASIC -> {
                 this.value = config.paperclipBaseValue;
                 this.particleColor = Color.GRAY;
             }
-            case RED_PAPERCLIP -> {
+            case RED -> {
                 this.value = config.paperclipBaseValue * 5;
                 this.particleColor = Color.RED;
             }
-            case GREEN_PAPERCLIP -> {
+            case GREEN -> {
                 this.value = config.paperclipBaseValue * 25;
                 this.particleColor = Color.GREEN;
             }
-            case BLUE_PAPERCLIP -> {
+            case BLUE -> {
                 this.value = config.paperclipBaseValue * 100;
                 this.particleColor = Color.BLUE;
             }
-            case PURPLE_PAPERCLIP -> {
+            case PURPLE -> {
                 this.value = config.paperclipBaseValue * 1000;
                 this.particleColor = new Color(128, 0, 128);
             }
-            case YELLOW_PAPERCLIP -> {
+            case YELLOW -> {
                 this.value = config.paperclipBaseValue * 10000;
                 this.particleColor = Color.YELLOW;
             }
@@ -88,18 +100,17 @@ public class Paperclip extends GameObject {
     }
 
     public void render(Graphics g) {
-        g.drawImage(getImageForID(), x, y, width, height, null);
+        g.drawImage(getImageForTier(tier), x, y, width, height, null);
     }
 
-    private Image getImageForID() {
-        return switch (id) {
-            case PAPERCLIP -> PAPERCLIP;
-            case RED_PAPERCLIP -> RED_PAPERCLIP;
-            case GREEN_PAPERCLIP -> GREEN_PAPERCLIP;
-            case BLUE_PAPERCLIP -> BLUE_PAPERCLIP;
-            case PURPLE_PAPERCLIP -> PURPLE_PAPERCLIP;
-            case YELLOW_PAPERCLIP -> YELLOW_PAPERCLIP;
-            default -> PAPERCLIP;
+    private Image getImageForTier(ColorTier tier) {
+        return switch (tier) {
+            case BASIC -> PAPERCLIP;
+            case RED -> RED_PAPERCLIP;
+            case GREEN -> GREEN_PAPERCLIP;
+            case BLUE -> BLUE_PAPERCLIP;
+            case PURPLE -> PURPLE_PAPERCLIP;
+            case YELLOW -> YELLOW_PAPERCLIP;
         };
     }
 

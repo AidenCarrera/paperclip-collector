@@ -5,13 +5,6 @@ public enum ID {
     MOUSE,
     PAPERCLIP,
 
-    // Paperclip colors
-    RED_PAPERCLIP,
-    GREEN_PAPERCLIP,
-    BLUE_PAPERCLIP,
-    PURPLE_PAPERCLIP,
-    YELLOW_PAPERCLIP,
-
     // Menu buttons
     NEW_GAME,
     CONTINUE,

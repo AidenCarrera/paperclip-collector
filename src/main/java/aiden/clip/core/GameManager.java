@@ -163,15 +163,19 @@ public class GameManager {
         }
     }
 
-    public void checkCollisions(int x, int y) {
-        // Check for paperclip collisions (hover/drag)
+    public void checkCollisions(int x1, int y1, int x2, int y2) {
+        // Check for paperclip collisions (hover/drag) using line segment for CCD
+        // AND a rectangle for the cursor body to make collection easier
+        java.awt.Rectangle cursorBounds = new java.awt.Rectangle(x2, y2, 32, 32); // Approx cursor size
+
         for (int i = 0; i < handler.getObjects().size(); i++) {
             GameObject obj = handler.getObjects().get(i);
             if (obj.getID() == null)
                 continue;
 
-            // Simple bounding box check
-            if (obj.getBounds().contains(x, y)) {
+            // Check if line segment intersects object bounds OR if cursor rectangle
+            // intersects
+            if (obj.getBounds().intersectsLine(x1, y1, x2, y2) || obj.getBounds().intersects(cursorBounds)) {
                 switch (obj.getID()) {
                     case PAPERCLIP, RED_PAPERCLIP, GREEN_PAPERCLIP, BLUE_PAPERCLIP, PURPLE_PAPERCLIP,
                             YELLOW_PAPERCLIP -> {

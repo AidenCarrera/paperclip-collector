@@ -38,6 +38,9 @@ public class Game extends Canvas implements Runnable {
     private BufferedImage levelImage = null;
     private final BufferedImage dog;
 
+    // Mouse tracking for CCD
+    private int lastMouseX, lastMouseY;
+
     private GameState gameState = GameState.MENU;
 
     // Scaling factors
@@ -109,10 +112,39 @@ public class Game extends Canvas implements Runnable {
         autoSaveInterval = config.autoSaveIntervalSeconds;
 
         // --- Set custom cursor ---
+        // --- Set custom cursor ---
         Image cursorImg = new ImageIcon(
                 Objects.requireNonNull(getClass().getResource("/images/cursor.png")))
                 .getImage();
-        setCursor(Toolkit.getDefaultToolkit().createCustomCursor(cursorImg, new Point(0, 0), "Cursor"));
+
+        // Resize cursor to prevent stretching
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        Dimension bestSize = toolkit.getBestCursorSize(32, 32);
+
+        if (bestSize.width > 0 && bestSize.height > 0) {
+            BufferedImage resizedCursor = new BufferedImage(bestSize.width, bestSize.height,
+                    BufferedImage.TYPE_INT_ARGB);
+            Graphics g = resizedCursor.getGraphics();
+
+            // Calculate dimensions to preserve aspect ratio
+            int imgWidth = cursorImg.getWidth(null);
+            int imgHeight = cursorImg.getHeight(null);
+
+            if (imgWidth > 0 && imgHeight > 0) {
+                double scale = Math.min((double) bestSize.width / imgWidth, (double) bestSize.height / imgHeight);
+                int newWidth = (int) (imgWidth * scale);
+                int newHeight = (int) (imgHeight * scale);
+
+                g.drawImage(cursorImg, 0, 0, newWidth, newHeight, null);
+            } else {
+                // Fallback if dimensions unknown (shouldn't happen with ImageIcon)
+                g.drawImage(cursorImg, 0, 0, bestSize.width, bestSize.height, null);
+            }
+            g.dispose();
+            cursorImg = resizedCursor;
+        }
+
+        setCursor(toolkit.createCustomCursor(cursorImg, new Point(0, 0), "Cursor"));
     }
 
     // --- Game state getters/setters ---
@@ -237,9 +269,22 @@ public class Game extends Canvas implements Runnable {
 
         if (gameState == GameState.GAME) {
             gameManager.tick();
-            // Handle continuous input (hover/drag) on the game thread
-            gameManager.checkCollisions(inputHandler.getMouseX(), inputHandler.getMouseY());
-            gameManager.handleUiHover(inputHandler.getMouseX(), inputHandler.getMouseY());
+
+            // Handle continuous input (hover/drag) on the game thread with CCD
+            int currentMouseX = inputHandler.getMouseX();
+            int currentMouseY = inputHandler.getMouseY();
+
+            // Initialize last positions if this is the first tick or they are 0 (start)
+            if (lastMouseX == 0 && lastMouseY == 0) {
+                lastMouseX = currentMouseX;
+                lastMouseY = currentMouseY;
+            }
+
+            gameManager.checkCollisions(lastMouseX, lastMouseY, currentMouseX, currentMouseY);
+            gameManager.handleUiHover(currentMouseX, currentMouseY);
+
+            lastMouseX = currentMouseX;
+            lastMouseY = currentMouseY;
         }
     }
 

@@ -16,6 +16,7 @@ public class InputHandler extends MouseAdapter {
     private final Handler handler;
     private final ConfigManager config;
     private int pressX, pressY;
+    private volatile int mouseX, mouseY;
 
     public InputHandler(Game game, Handler handler, ConfigManager config) {
         this.game = game;
@@ -39,8 +40,6 @@ public class InputHandler extends MouseAdapter {
             handleClick(releaseX, releaseY);
         }
     }
-
-    private volatile int mouseX, mouseY;
 
     @Override
     public void mouseMoved(MouseEvent e) {

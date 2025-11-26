@@ -11,6 +11,8 @@ public class Paperclip extends GameObject {
 
     private final int width;
     private final int height;
+    private final int value;
+    private final Color particleColor;
 
     private static final Image PAPERCLIP = new ImageIcon(
             Objects.requireNonNull(Paperclip.class.getResource("/images/paperclip.png"))).getImage();
@@ -44,6 +46,38 @@ public class Paperclip extends GameObject {
 
         width = (int) (img.getWidth(null) * finalScaleX);
         height = (int) (img.getHeight(null) * finalScaleY);
+
+        // Initialize properties based on ID
+        switch (id) {
+            case PAPERCLIP -> {
+                this.value = config.paperclipBaseValue;
+                this.particleColor = Color.GRAY;
+            }
+            case RED_PAPERCLIP -> {
+                this.value = config.paperclipBaseValue * 5;
+                this.particleColor = Color.RED;
+            }
+            case GREEN_PAPERCLIP -> {
+                this.value = config.paperclipBaseValue * 25;
+                this.particleColor = Color.GREEN;
+            }
+            case BLUE_PAPERCLIP -> {
+                this.value = config.paperclipBaseValue * 100;
+                this.particleColor = Color.BLUE;
+            }
+            case PURPLE_PAPERCLIP -> {
+                this.value = config.paperclipBaseValue * 1000;
+                this.particleColor = new Color(128, 0, 128);
+            }
+            case YELLOW_PAPERCLIP -> {
+                this.value = config.paperclipBaseValue * 10000;
+                this.particleColor = Color.YELLOW;
+            }
+            default -> {
+                this.value = 0;
+                this.particleColor = Color.GRAY;
+            }
+        }
     }
 
     public Rectangle getBounds() {
@@ -76,7 +110,15 @@ public class Paperclip extends GameObject {
     public int getHeight() {
         return height;
     }
-    
+
+    public int getValue() {
+        return value;
+    }
+
+    public Color getParticleColor() {
+        return particleColor;
+    }
+
     public static Dimension getScaledSize(ConfigManager config, double scaleX, double scaleY) {
         Image img = PAPERCLIP; // use base paperclip image
         int width = (int) (img.getWidth(null) * scaleX * config.clipSize);

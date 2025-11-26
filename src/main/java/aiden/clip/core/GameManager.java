@@ -120,46 +120,18 @@ public class GameManager {
     }
 
     // --- Gameplay actions ---
-    public void collectClip(GameObject clip) {
-        int baseValue = 0;
-        java.awt.Color particleColor = java.awt.Color.GRAY;
+    public void collectClip(GameObject obj) {
+        if (obj instanceof aiden.clip.entities.Paperclip clip) {
+            int baseValue = clip.getValue();
 
-        switch (clip.getID()) {
-            case PAPERCLIP -> {
-                baseValue = config.paperclipBaseValue;
-                particleColor = java.awt.Color.GRAY;
-            }
-            case RED_PAPERCLIP -> {
-                baseValue = config.paperclipBaseValue * 5;
-                particleColor = java.awt.Color.RED;
-            }
-            case GREEN_PAPERCLIP -> {
-                baseValue = config.paperclipBaseValue * 25;
-                particleColor = java.awt.Color.GREEN;
-            }
-            case BLUE_PAPERCLIP -> {
-                baseValue = config.paperclipBaseValue * 100;
-                particleColor = java.awt.Color.BLUE;
-            }
-            case PURPLE_PAPERCLIP -> {
-                baseValue = config.paperclipBaseValue * 1000;
-                particleColor = new java.awt.Color(128, 0, 128);
-            }
-            case YELLOW_PAPERCLIP -> {
-                baseValue = config.paperclipBaseValue * 10000;
-                particleColor = java.awt.Color.YELLOW;
-            }
-            default -> {
-            }
-        }
+            if (baseValue > 0) {
+                clips += baseValue * (upgradeManager.getValueUpgradeCount() + 1);
+                spawnManager.decreaseClipCount();
+                handler.removeObject(clip);
 
-        if (baseValue > 0) {
-            clips += baseValue * (upgradeManager.getValueUpgradeCount() + 1);
-            spawnManager.decreaseClipCount();
-            handler.removeObject(clip);
-
-            // Spawn particles
-            particleSystem.spawnExplosion(clip.getX() + 16, clip.getY() + 16, particleColor, 10);
+                // Spawn particles
+                particleSystem.spawnExplosion(clip.getX() + 16, clip.getY() + 16, clip.getParticleColor(), 10);
+            }
         }
     }
 

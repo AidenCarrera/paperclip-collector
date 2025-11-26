@@ -55,6 +55,7 @@ public class GameUI {
                 scaledX(valueX), scaledY(valueY), scaledSize(size), scaledSize(size),
                 "", ResourceManager.getImage("/images/valueUpgrade.png"),
                 gameManager::buyValueUpgrade);
+        valueUpgradeBtn.setHoverColor(null);
         uiManager.addElement(valueUpgradeBtn);
 
         // More Upgrade
@@ -62,6 +63,7 @@ public class GameUI {
                 scaledX(moreX), scaledY(moreY), scaledSize(size), scaledSize(size),
                 "", ResourceManager.getImage("/images/moreUpgrade.png"),
                 gameManager::buyMoreUpgrade);
+        moreUpgradeBtn.setHoverColor(null);
         uiManager.addElement(moreUpgradeBtn);
 
         // Colored Upgrade (Dynamic image, so we might need a custom button or update
@@ -83,7 +85,7 @@ public class GameUI {
                         g.drawImage(img, x, y, width, height, null);
                     }
                     // Draw cost
-                    drawIconWithValue(g, clipIcon, x, y, gameManager.getColoredUpgradePrice(nextTier));
+                    drawUpgradeCost(g, clipIcon, x, y, gameManager.getColoredUpgradePrice(nextTier));
                 }
             }
         };
@@ -135,6 +137,13 @@ public class GameUI {
 
     private void drawIconWithValue(Graphics g, Image icon, int x, int y, int value) {
         g.drawString(String.valueOf(value), x + scaledSize(20), y + scaledSize(5));
+        int iconHeight = scaledSize(22);
+        int iconWidth = (int) (icon.getWidth(null) * ((double) iconHeight / icon.getHeight(null)));
+        g.drawImage(icon, x, y - scaledSize(18), iconWidth, iconHeight, null);
+    }
+
+    private void drawUpgradeCost(Graphics g, Image icon, int x, int y, int value) {
+        g.drawString(String.valueOf(value), x + scaledSize(20), y - scaledSize(3));
         int iconHeight = scaledSize(22);
         int iconWidth = (int) (icon.getWidth(null) * ((double) iconHeight / icon.getHeight(null)));
         g.drawImage(icon, x, y - scaledSize(18), iconWidth, iconHeight, null);

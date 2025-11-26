@@ -13,7 +13,7 @@ public class UIButton extends UIElement {
     private final Runnable clickAction;
     private final Font font;
     private final Color textColor;
-    private final Color hoverColor;
+    private Color hoverColor;
 
     public UIButton(int x, int y, int width, int height, String text, Image icon, Runnable clickAction) {
         super(x, y, width, height);
@@ -25,6 +25,10 @@ public class UIButton extends UIElement {
         this.hoverColor = new Color(255, 255, 255, 50);
     }
 
+    public void setHoverColor(Color hoverColor) {
+        this.hoverColor = hoverColor;
+    }
+
     @Override
     public void tick() {
     }
@@ -34,7 +38,7 @@ public class UIButton extends UIElement {
         if (!visible)
             return;
 
-        if (hovered) {
+        if (hovered && hoverColor != null) {
             g.setColor(hoverColor);
             g.fillRect(x, y, width, height);
         }

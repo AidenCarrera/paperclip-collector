@@ -47,7 +47,6 @@ public class SaveManager {
     public void save(GameManager gameManager) {
         GameSaveData data = new GameSaveData(
                 gameManager.getClips(),
-                gameManager.getMaxClipCount(),
                 gameManager.getColoredUpgrade().name(),
                 gameManager.getValueUpgradeCount(),
                 gameManager.getMoreUpgradeCount());
@@ -74,7 +73,10 @@ public class SaveManager {
             GameSaveData data = mapper.readValue(file, GameSaveData.class);
 
             gameManager.setClips(data.clips);
-            gameManager.setMaxClipCount(data.maxClipCount);
+
+            // Calculate max clips based on base config + upgrades
+            int baseMax = gameManager.getConfig().maxClipCount;
+            gameManager.setMaxClipCount(baseMax + data.moreUpgradeCount);
 
             try {
                 if (data.coloredUpgrade != null && !data.coloredUpgrade.isBlank()) {

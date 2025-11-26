@@ -18,10 +18,20 @@ public class InputHandler extends MouseAdapter {
     private int pressX, pressY;
     private volatile int mouseX, mouseY;
 
+    private final java.util.Queue<Runnable> eventQueue = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
     public InputHandler(Game game, Handler handler, ConfigManager config) {
         this.game = game;
         this.handler = handler;
         this.config = config;
+    }
+
+    // Process queued events on the game thread
+    public void tick() {
+        Runnable task;
+        while ((task = eventQueue.poll()) != null) {
+            task.run();
+        }
     }
 
     @Override
@@ -37,7 +47,8 @@ public class InputHandler extends MouseAdapter {
 
         if (Math.abs(releaseX - pressX) <= config.clickTolerance
                 && Math.abs(releaseY - pressY) <= config.clickTolerance) {
-            handleClick(releaseX, releaseY);
+            // Queue the click handling
+            eventQueue.add(() -> handleClick(releaseX, releaseY));
         }
     }
 
